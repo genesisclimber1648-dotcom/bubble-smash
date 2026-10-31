@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>爽快！バブルスマッシュ - 最終完全版</title>
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #1a1a2e;
+        transition: background-color 0.3s ease;
+        color: #fff;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        user-select: none;
+        -webkit-user-select: none; 
+        -webkit-touch-callout: none;
+        touch-action: none; 
+    }
+    #gameArea {
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+    }
+    #ui {
+        position: absolute;
+        top: clamp(10px, 2vw, 20px);
+        left: clamp(10px, 2vw, 20px);
+        z-index: 10;
+        pointer-events: none;
+        display: flex;
+        gap: clamp(15px, 4vw, 30px);
+    }
+    .status-text {
+        font-size: clamp(18px, 4vw, 28px);
+        font-weight: bold;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }
+    .combo-wrapper {
+        position: fixed;
+        top: clamp(45px, 10vw, 60px); 
+        right: clamp(10px, 2vw, 20px);
+        pointer-events: none;
+        z-index: 50;
+        opacity: 0;
+        transition: opacity 0.1s;
+        transform-origin: top right;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+    .combo-text {
+        font-size: clamp(24px, 6vw, 40px);
+        font-weight: 900;
+        color: #ffea00;
+        font-style: italic;
+        text-shadow: 0 0 10px #ffea00, 2px 2px 5px rgba(0,0,0,0.8);
+        white-space: nowrap;
+    }
+    .combo-msg {
+        font-size: clamp(20px, 5vw, 32px);
+        font-weight: 900;
+        color: #00e5ff;
+        font-style: italic;
+        text-shadow: 0 0 10px #00e5ff, 2px 2px 5px rgba(0,0,0,0.8);
+        white-space: nowrap;
+        margin-top: -5px;
+    }
+    .target {
+        position: absolute;
+        border-radius: 50%;
+        cursor: crosshair;
+        background-image: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 40%);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+    }
+    .target:active {
+        filter: brightness(1.5) contrast(1.2);
+    }
+    .target.gold {
+        background-image: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 214, 0, 0.2) 50%);
+        border: 2px solid rgba(255, 214, 0, 0.8);
+        animation: pulse-gold 1s infinite alternate;
+    }
+    @keyframes pulse-gold {
+        0% { box-shadow: inset 10px 0 20px rgba(255, 255, 255, 0.6), inset -10px 0 20px rgba(255, 214, 0, 0.4), inset 0 -10px 20px rgba(255, 214, 0, 0.5), 0 0 15px rgba(255, 214, 0, 0.4); }
+        100% { box-shadow: inset 10px 0 20px rgba(255, 255, 255, 0.8), inset -10px 0 20px rgba(255, 214, 0, 0.6), inset 0 -10px 20px rgba(255, 214, 0, 0.7), 0 0 30px rgba(255, 214, 0, 0.8); }
+    }
+    .particle {
+        position: absolute;
+        border-radius: 50%;
+        pointer-events: none;
+        animation: pop 0.4s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+    }
+    @keyframes pop {
+        0% { transform: scale(1); opacity: 0.8; }
+        100% { transform: scale(2.5); opacity: 0; }
+    }
+    #overlay {
+        position: absolute;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+        backdrop-filter: blur(5px);
+        padding: 20px;
+        box-sizing: border-box;
+        overflow-y: auto;
+    }
+    h1 { 
+        margin: 0 0 10px 0; 
+        font-size: clamp(28px, 7vw, 56px); 
+        color: #00e5ff; 
+        text-shadow: 0 0 20px #00e5ff; 
+        text-align: center;
+    }
+    button {
+        padding: clamp(12px, 2vh, 15px) clamp(20px, 4vw, 40px);
+        font-size: clamp(18px, 4vw, 24px);
+        font-weight: bold;
+        color: #fff;
+        background: linear-gradient(45deg, #e60073, #ff4081);
+        border: none;
+        border-radius: 40px;
+        cursor: pointer;
+        box-shadow: 0 5px 20px rgba(230,0,115,0.6);
+        transition: transform 0.1s, box-shadow 0.1s;
+        flex-shrink: 0;
+    }
+    button:hover { box-shadow: 0 8px 25px rgba(230,0,115,0.8); }
+    button:active { transform: translateY(4px); box-shadow: 0 2px 10px rgba(230,0,115,0.4); }
+    #titleButtons {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        align-items: center;
+        margin-top: 30px;
+        width: 100%;
+    }
+    #titleButtons button { width: 100%; max-width: 320px; }
+    #tapToReturn {
+        margin-top: 30px;
+        font-size: clamp(18px, 4vw, 24px);
+        color: #ffea00;
+        font-weight: bold;
+        animation: blink 1.5s infinite;
+        cursor: pointer;
+    }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    #rankingBoard {
+        margin-top: 15px;
+        background: rgba(255,255,255,0.1);
+        padding: clamp(15px, 3vw, 25px) clamp(20px, 4vw, 40px);
+        border-radius: 15px;
+        text-align: center;
+        display: none;
+        border: 1px solid rgba(255,255,255,0.2);
+        width: 100%;
+        max-width: 450px;
+        box-sizing: border-box;
+    }
+    #rankingBoard h2 { margin-top: 0; color: #ffd600; font-size: clamp(20px, 5vw, 28px); text-shadow: 0 0 10px rgba(255,214,0,0.5); }
+    ol { padding-left: 0; list-style-position: inside; font-size: clamp(14px, 3.5vw, 20px); text-align: left; margin: 0; }
+    li { margin-bottom: 8px; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>
+</head>
+<body>
+<div id="gameArea"></div>
+<div id="ui">
+    <div class="status-text">TIME: <span id="timeDisplay">60</span></div>
+    <div class="status-text">SCORE: <span id="scoreDisplay">0</span></div>
+</div>
+<div class="combo-wrapper" id="comboWrapper">
+    <div class="combo-text" id="comboDisplay"></div>
+    <div class="combo-msg" id="comboMsgDisplay"></div>
+</div>
+
+<div id="overlay">
+    <h1 id="overlayTitle">爽快！バブルスマッシュ</h1>
+    <div id="finalScoreDisplay" style="font-size: clamp(24px, 5vw, 36px); font-weight: bold; color: #fff; text-shadow: 0 0 10px #e60073; display: none; margin-bottom: 15px; text-align: center;"></div>
+    <div id="rankingBoard">
+        <h2 id="rankingTitle">🏆 TOP 5 RANKING 🏆</h2>
+        <ol id="rankingList"></ol>
+    </div>
+    <div id="titleButtons">
+        <button id="startBtn30">30秒モードでプレイ</button>
+        <button id="startBtn60">60秒モードでプレイ</button>
+    </div>
+    <div id="tapToReturn" style="display: none;">画面をタッチしてタイトルへ</div>
+</div>
+
+<script>
+    const gameArea = document.getElementById('gameArea');
+    const scoreEl = document.getElementById('scoreDisplay');
+    const timeEl = document.getElementById('timeDisplay');
+    const comboWrapper = document.getElementById('comboWrapper');
+    const comboEl = document.getElementById('comboDisplay');
+    const comboMsgEl = document.getElementById('comboMsgDisplay');
+    const overlay = document.getElementById('overlay');
+    const overlayTitle = document.getElementById('overlayTitle');
+    const finalScoreDisplay = document.getElementById('finalScoreDisplay');
+    const rankingBoard = document.getElementById('rankingBoard');
+    const rankingList = document.getElementById('rankingList');
+    const rankingTitle = document.getElementById('rankingTitle');
+    const titleButtons = document.getElementById('titleButtons');
+    const tapToReturn = document.getElementById('tapToReturn');
+    const startBtn30 = document.getElementById('startBtn30');
+    const startBtn60 = document.getElementById('startBtn60');
+
+    let score = 0, combo = 0, maxCombo = 0, gameMode = 60, timeLeft = 60;
+    let comboTimer, bubbleInterval, timerInterval;
+    let isPlaying = false, audioCtx = null, canReturnToTitle = false, resultState = 0;
+    let bgmStartTime = 0, isBgmPlaying = false, currentNote = 0, nextNoteTime = 0, bgmTimerID, bgmMasterGain;
+
+    function initAudio() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext && !audioCtx) {
+                audioCtx = new AudioContext();
+                bgmMasterGain = audioCtx.createGain();
+                bgmMasterGain.connect(audioCtx.destination);
+                bgmMasterGain.gain.value = 0.25; 
+            }
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        } catch (e) { console.warn("音声がブロックされました。"); }
+    }
+
+    function mtof(note) { return 440 * Math.pow(2, (note - 69) / 12); }
+
+    const bassPattern30 = [40,0,40,0,40,40,0,40,40,0,40,0,40,0,0,0, 36,0,36,0,36,36,0,36,36,0,36,0,36,0,0,0, 38,0,38,0,38,38,0,38,38,0,38,0,38,0,0,0, 40,0,40,0,40,40,0,40,40,0,40,0,40,0,0,0];
+    const melodyPattern30 = [76,0,76,74,76,0,79,0,76,0,74,0,71,0,0,0, 76,0,76,74,76,0,79,0,83,0,81,0,79,0,0,0, 76,0,76,74,76,0,79,0,76,0,74,0,71,0,0,0, 67,0,69,0,71,0,74,0,76,0,0,0,0,0,0,0];
+    const drumPattern30 = { k:[1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0], s:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], h:[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0] };
+
+    const bassPattern60 = [38,0,0,38,0,48,0,45,38,0,0,38,0,41,0,0, 43,0,0,43,0,41,0,35,43,0,0,43,0,38,0,0, 36,0,0,36,0,47,0,43,36,0,0,36,0,40,0,0, 45,0,40,0,45,0,43,0,45,0,0,45,0,37,40,43];
+    const melodyPattern60 = [74,0,77,0,79,0,81,0,0,79,77,0,74,0,0,0, 79,0,81,0,83,0,86,0,0,83,81,0,79,0,0,0, 76,0,79,0,81,0,83,0,0,81,79,0,76,0,0,0, 73,0,76,0,79,0,81,0,81,82,81,79,76,0,0,0];
+    const drumPattern60 = { k:[1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0], s:[0,0,0,0,1,0,0,1,0,0,0,0,1,0,0,0], h:[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1] };
+
+    function playSynth(type, time, dur, freq1, freq2, vol, filterFreq) {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+        osc.type = type; osc.frequency.setValueAtTime(freq1, time);
+        if(freq2) osc.frequency.exponentialRampToValueAtTime(freq2, time + dur);
+        gain.gain.setValueAtTime(vol, time); gain.gain.exponentialRampToValueAtTime(0.01, time + dur);
+        osc.connect(gain); gain.connect(bgmMasterGain);
+        osc.start(time); osc.stop(time + dur);
+    }
+    
+    function playNoise(time, dur, vol, filterType, filterFreq) {
+        if (!audioCtx) return;
+        const bs = audioCtx.sampleRate * dur, buf = audioCtx.createBuffer(1, bs, audioCtx.sampleRate), data = buf.getChannelData(0);
+        for (let i = 0; i < bs; i++) data[i] = Math.random() * 2 - 1;
+        const noise = audioCtx.createBufferSource(); noise.buffer = buf;
+        const flt = audioCtx.createBiquadFilter(), gain = audioCtx.createGain();
+        flt.type = filterType; flt.frequency.value = filterFreq;
+        gain.gain.setValueAtTime(vol, time); gain.gain.exponentialRampToValueAtTime(0.01, time + dur);
+        noise.connect(flt); flt.connect(gain); gain.connect(bgmMasterGain);
+        noise.start(time);
+    }
+
+    function playKick(t) { playSynth('sine', t, 0.1, 150, 0.01, 0.8); }
+    function playSnare(t) { playNoise(t, 0.1, 0.6, 'highpass', 1000); playSynth('triangle', t, 0.1, 250, 0.01, 0.4); }
+    function playHihat(t) { playNoise(t, 0.05, 0.2, 'highpass', 5000); }
+    function playBass(n, t, d) { if(!audioCtx)return; const o=audioCtx.createOscillator(),g=audioCtx.createGain(); o.type='triangle'; o.frequency.value=mtof(n); g.gain.setValueAtTime(0.6,t); g.gain.linearRampToValueAtTime(0.4,t+d*0.8); g.gain.linearRampToValueAtTime(0,t+d); o.connect(g); g.connect(bgmMasterGain); o.start(t); o.stop(t+d); }
+    function playMelody(n, t, d) { if(!audioCtx)return; const o=audioCtx.createOscillator(),g=audioCtx.createGain(); o.type='square'; o.frequency.value=mtof(n); g.gain.setValueAtTime(0.15,t); g.gain.linearRampToValueAtTime(0.1,t+d*0.5); g.gain.linearRampToValueAtTime(0,t+d*0.9); o.connect(g); g.connect(bgmMasterGain); o.start(t); o.stop(t+d); }
+
+    function scheduleBGMNote(step, time) {
+        const el = time - bgmStartTime;
+        let cBPM, bP, mP, dP;
+        if (gameMode === 30) { cBPM = 130 + (90 * (el / 30)); bP = bassPattern30; mP = melodyPattern30; dP = drumPattern30; }
+        else { cBPM = 110 + (80 * (el / 60)); bP = bassPattern60; mP = melodyPattern60; dP = drumPattern60; }
+        const sDur = (60.0 / cBPM) * 0.25, pId = step % 64, dId = step % 16;
+        if (dP.k[dId]) playKick(time); if (dP.s[dId]) playSnare(time); if (dP.h[dId]) playHihat(time);
+        if (bP[pId] > 0) playBass(bP[pId], time, sDur); if (mP[pId] > 0) playMelody(mP[pId], time, sDur);
+    }
+
+    function nextBGMNote() {
+        const el = nextNoteTime - bgmStartTime;
+        if (el >= gameMode) return;
+        const cBPM = gameMode === 30 ? 130 + (90 * (el / 30)) : 110 + (80 * (el / 60));
+        nextNoteTime += 0.25 * (60.0 / cBPM); currentNote++;
+    }
+
+    function bgmScheduler() {
+        if (!isBgmPlaying) return;
+        while (nextNoteTime < audioCtx.currentTime + 0.1) {
+            scheduleBGMNote(currentNote, nextNoteTime); nextBGMNote();
+            if (nextNoteTime - bgmStartTime >= gameMode) break;
+        }
+        bgmTimerID = setTimeout(bgmScheduler, 25);
+    }
+
+    function startBGM() { if (!audioCtx) return; isBgmPlaying = true; bgmStartTime = audioCtx.currentTime; nextNoteTime = bgmStartTime + 0.1; currentNote = 0; bgmScheduler(); }
+    
+    function stopBGM() {
+        if (!isBgmPlaying) return; isBgmPlaying = false; clearTimeout(bgmTimerID);
+        if (audioCtx && bgmMasterGain) {
+            const t = audioCtx.currentTime, notes = gameMode===30 ? [64,67,71,76] : [60,64,67,71,74], bVal = gameMode===30 ? 40 : 36;
+            notes.forEach(n => { const o=audioCtx.createOscillator(),g=audioCtx.createGain(); o.type='square'; o.frequency.value=mtof(n); g.gain.setValueAtTime(0.12,t); g.gain.exponentialRampToValueAtTime(0.001,t+2.5); o.connect(g); g.connect(bgmMasterGain); o.start(t); o.stop(t+2.5); });
+            const bo=audioCtx.createOscillator(),bg=audioCtx.createGain(); bo.type='triangle'; bo.frequency.value=mtof(bVal); bg.gain.setValueAtTime(0.6,t); bg.gain.exponentialRampToValueAtTime(0.001,t+2.5); bo.connect(bg); bg.connect(bgmMasterGain); bo.start(t); bo.stop(t+2.5);
+            playNoise(t, 2.5, 0.5, 'highpass', 1000);
+        }
+    }
+
+    function playPopSound(isGold = false) {
+        if (!audioCtx) return;
+        const t = audioCtx.currentTime;
+        if (isGold) {
+            playNoise(t, 1.0, 2.5, 'lowpass', 2500); playSynth('sine', t, 0.8, 120, 10, 2.5);
+            for (let i=0; i<15; i++) { setTimeout(() => { try{playSynth('square', audioCtx.currentTime, 0.05, 1000+Math.random()*2000, null, 0.1+Math.random()*0.2);}catch(e){} }, 100+Math.random()*600); }
+        } else {
+            playNoise(t, 0.15, 1.5, 'lowpass', 1500); playSynth('square', t, 0.15, 400, 50, 0.5);
+        }
+    }
+
+    const startHandler30 = (e) => { if(e.type==='touchstart'&&e.cancelable)e.preventDefault(); if(isPlaying)return; gameMode=30; initAudio(); startGame(); };
+    const startHandler60 = (e) => { if(e.type==='touchstart'&&e.cancelable)e.preventDefault(); if(isPlaying)return; gameMode=60; initAudio(); startGame(); };
+    startBtn30.addEventListener('click', startHandler30); startBtn30.addEventListener('touchstart', startHandler30, {passive:false});
+    startBtn60.addEventListener('click', startHandler60); startBtn60.addEventListener('touchstart', startHandler60, {passive:false});
+
+    const resultTapHandler = (e) => {
+        if (isPlaying) return;
+        if (canReturnToTitle && tapToReturn.style.display === 'block') {
+            if (e.type === 'touchstart' && e.cancelable) e.preventDefault();
+            e.stopPropagation(); resultState++;
+            if (resultState === 1) { finalScoreDisplay.style.display='none'; overlayTitle.textContent="RANKING"; showRankingDisplay(30, 'score'); }
+            else if (resultState === 2) { showRankingDisplay(30, 'combo'); }
+            else if (resultState === 3) { showRankingDisplay(60, 'score'); }
+            else if (resultState === 4) { showRankingDisplay(60, 'combo'); tapToReturn.textContent = "画面をタッチしてタイトルへ"; }
+            else if (resultState >= 5) { showTitleScreen(); }
+        }
+    };
+    overlay.addEventListener('click', resultTapHandler); overlay.addEventListener('touchstart', resultTapHandler, {passive:false});
+
+    function showTitleScreen() {
+        resultState = 0; overlayTitle.textContent = "爽快！バブルスマッシュ"; finalScoreDisplay.style.display = 'none';
+        rankingBoard.style.display = 'none'; tapToReturn.style.display = 'none'; titleButtons.style.display = 'flex'; overlay.style.display = 'flex';
+    }
+
+    function startGame() {
+        overlay.style.display = 'none'; finalScoreDisplay.style.display = 'none'; rankingBoard.style.display = 'none';
+        gameArea.innerHTML = ''; document.body.style.backgroundColor = '#1a1a2e';
+        score = 0; combo = 0; maxCombo = 0; resultState = 0; timeLeft = gameMode; isPlaying = true;
+        scoreEl.textContent = score; timeEl.textContent = timeLeft; comboWrapper.style.opacity = '0';
+        clearInterval(bubbleInterval); clearInterval(timerInterval);
+        startBGM();
+        bubbleInterval = setInterval(createTarget, 350); timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function updateTimer() {
+        timeLeft--; timeEl.textContent = timeLeft;
+        if (timeLeft <= 10) timeEl.style.color = '#ff1744';
+        if (timeLeft <= 0) endGame();
+    }
+
+    function endGame() {
+        isPlaying = false; clearInterval(bubbleInterval); clearInterval(timerInterval); stopBGM();
+        document.querySelectorAll('.target').forEach(t => { t.style.transform = 'scale(0)'; t.style.opacity = '0'; });
+        setTimeout(() => gameArea.innerHTML = '', 300);
+        timeEl.style.color = '#fff'; document.body.style.backgroundColor = '#1a1a2e';
+        saveRanking(score, maxCombo);
+        
+        overlayTitle.textContent = "TIME UP!";
+        finalScoreDisplay.innerHTML = `最終スコア: ${score.toLocaleString()} 点<br><span style="font-size:0.8em; color:#ffea00;">最大コンボ: ${maxCombo} COMBO</span>`;
+        finalScoreDisplay.style.display = 'block'; titleButtons.style.display = 'none'; rankingBoard.style.display = 'none';
+        tapToReturn.textContent = "画面をタッチして次へ"; tapToReturn.style.display = 'none'; canReturnToTitle = false; overlay.style.display = 'flex';
+        setTimeout(() => { if (!isPlaying) { canReturnToTitle = true; tapToReturn.style.display = 'block'; } }, 3000);
+    }
+
+    function saveRanking(nScore, nCombo) {
+        let r = [], k = `bubbleSmashRanking_v5_${gameMode}s`, d = new Date().toLocaleString('ja-JP', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+        try { r = JSON.parse(localStorage.getItem(k)) || []; r.forEach(x => x.isNew = false); r.push({score:nScore, combo:nCombo, date:d, isNew:true}); r.sort((a,b)=>b.score-a.score); r=r.slice(0,50); localStorage.setItem(k, JSON.stringify(r)); } 
+        catch(e) { localStorage.setItem(k, JSON.stringify([{score:nScore, combo:nCombo, date:d, isNew:true}])); }
+    }
+
+    function showRankingDisplay(m, t) {
+        let r = []; try { r = JSON.parse(localStorage.getItem(`bubbleSmashRanking_v5_${m}s`)) || []; } catch(e){}
+        if(t==='score'){ r.sort((a,b)=>b.score-a.score); rankingTitle.textContent=`🏆 TOP 5 SCORE (${m}秒) 🏆`; }
+        else { r.sort((a,b)=>{ if(b.combo!==a.combo)return b.combo-a.combo; return b.score-a.score; }); rankingTitle.textContent=`🔥 TOP 5 COMBO (${m}秒) 🔥`; }
+        r=r.slice(0,5); rankingList.innerHTML='';
+        if(r.length===0){ rankingList.innerHTML='<li>データなし</li>'; }
+        else { r.forEach((d,i)=>{ const li=document.createElement('li'); let rank=['🥇','🥈','🥉','４.','５.'][i];
+            if(t==='score') li.textContent=`${rank} ${d.score.toLocaleString()}点 (${d.combo||0}C) ${d.date}`;
+            else li.textContent=`${rank} ${d.combo||0}C (${d.score.toLocaleString()}点) ${d.date}`;
+            if(m===gameMode && d.isNew){ li.style.color='#00e5ff'; li.style.fontWeight='bold'; } rankingList.appendChild(li);
+        }); } rankingBoard.style.display = 'block';
+    }
+
+    function createTarget() {
+        if (!isPlaying) return;
+        const tg = document.createElement('div'), s = Math.random()*60+60, isG = Math.random()<0.05;
+        tg.classList.add('target'); tg.style.width=`${s}px`; tg.style.height=`${s}px`;
+        let h;
+        if(isG){ tg.classList.add('gold'); h=50; tg.style.backgroundColor='rgba(255, 214, 0, 0.2)'; }
+        else{ h=Math.floor(Math.random()*360); tg.style.backgroundColor=`hsla(${h},80%,60%,0.15)`; tg.style.borderColor=`hsla(${h},80%,70%,0.5)`; tg.style.boxShadow=`inset 10px 0 20px rgba(255,255,255,0.6), inset -10px 0 20px hsla(${h},80%,60%,0.3), inset 0 -10px 20px hsla(${h},80%,60%,0.4), 0 0 15px hsla(${h},80%,60%,0.3)`; }
+        const m = s+20, x = Math.random()*(window.innerWidth-m)+10, y = Math.random()*(window.innerHeight-m)+10;
+        tg.style.left=`${x}px`; tg.style.top=`${y}px`;
+        const lt = 2000+Math.random()*1000, ct = Date.now(); tg.style.transform='scale(0.2)'; tg.style.opacity='0';
+        const hE = (e)=>{ if(e.cancelable)e.preventDefault(); hitTarget(tg,x,y,s,h,isG,ct,lt); };
+        tg.addEventListener('mousedown', hE); tg.addEventListener('touchstart', hE, {passive:false});
+        gameArea.appendChild(tg);
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{ tg.style.transition=`transform ${lt}ms linear, opacity 0.2s`; tg.style.transform='scale(1)'; tg.style.opacity='1'; }));
+        setTimeout(()=>{ if(tg.parentElement){ tg.style.transition='transform 0.2s, opacity 0.2s'; tg.style.transform='scale(1.1)'; tg.style.opacity='0'; setTimeout(()=>tg.remove(),200); } }, lt);
+    }
+
+    function hitTarget(tg, x, y, s, h, isG, ct, lt) {
+        if(!isPlaying || !tg.parentElement) return; tg.remove(); playPopSound(isG);
+        combo++; if(combo>maxCombo)maxCombo=combo;
+        const r = Math.max(0, Math.min(1, (Date.now()-ct)/lt)), sM = 1+(1-r)*2, aS = Math.floor((isG?500:100)*combo*sM);
+        score += aS; scoreEl.textContent = score.toLocaleString();
+        showCombo(); updateBg(); createPts(x, y, s, h, isG); showPop(x, y, aS, sM);
+    }
+
+    function showPop(x, y, s, m) {
+        const p=document.createElement('div'); p.textContent=`+${s.toLocaleString()}`; p.style.cssText=`position:absolute;left:${x+20}px;top:${y}px;color:${m>2.5?'#ffea00':'#fff'};font-size:${m>2.5?'28px':'20px'};font-weight:bold;pointer-events:none;text-shadow:1px 1px 3px rgba(0,0,0,0.8);transition:transform 0.5s ease-out, opacity 0.5s ease-out;transform:translateY(0) scale(1);z-index:20;`;
+        gameArea.appendChild(p);
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{ p.style.transform='translateY(-40px) scale(1.2)'; p.style.opacity='0'; }));
+        setTimeout(()=>p.remove(),500);
+    }
+
+    function showCombo() {
+        if(combo>1){
+            comboWrapper.style.opacity='1'; comboEl.textContent=`${combo} COMBO!!`;
+            let mL=Math.floor(combo/10)*10, cM="";
+            if(mL>=10) cM = mL>100 ? "GODLIKE!" : {10:"GOOD!",20:"GREAT!",30:"SUPER!",40:"EXCELLENT!",50:"AWESOME!",60:"AMAZING!",70:"FANTASTIC!",80:"BRILLIANT!",90:"UNBELIEVABLE!"}[mL];
+            comboMsgEl.textContent=cM; comboWrapper.style.transform='scale(1.2)'; setTimeout(()=>comboWrapper.style.transform='scale(1)',50);
+        }
+        clearTimeout(comboTimer); comboTimer = setTimeout(()=>{ combo=0; comboWrapper.style.opacity='0'; updateBg(); }, 1000);
+    }
+
+    function updateBg() { document.body.style.backgroundColor = combo===0 ? '#1a1a2e' : (combo>30 ? '#4a001e' : (combo>15 ? '#2a003e' : '#1a1a2e')); }
+
+    function createPts(x, y, s, h, isG) {
+        if (isG) {
+            const cX=x+s/2, cY=y+s/2;
+            const sf=document.createElement('div'); sf.style.cssText=`position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,0.4);pointer-events:none;z-index:999;transition:opacity 0.2s ease-out;`; document.body.appendChild(sf);
+            requestAnimationFrame(()=>requestAnimationFrame(()=>sf.style.opacity='0')); setTimeout(()=>sf.remove(),250);
+            
+            const r=document.createElement('div'); r.style.cssText=`position:absolute;left:${cX-s}px;top:${cY-s}px;width:${s*2}px;height:${s*2}px;border-radius:50%;border:10px solid rgba(255,255,255,0.8);box-sizing:border-box;pointer-events:none;z-index:18;transition:transform 0.5s cubic-bezier(0.1,0.8,0.3,1), opacity 0.5s ease-out, border-width 0.5s;transform:scale(0.5);opacity:1;`; gameArea.appendChild(r);
+            requestAnimationFrame(()=>requestAnimationFrame(()=>{r.style.transform='scale(4)';r.style.opacity='0';r.style.borderWidth='0px';})); setTimeout(()=>r.remove(),500);
+            
+            const f=document.createElement('div'); f.style.cssText=`position:absolute;left:${cX-s*1.5}px;top:${cY-s*1.5}px;width:${s*3}px;height:${s*3}px;border-radius:50%;background:#fff;box-shadow:0 0 60px #fff,0 0 100px #ffea00;pointer-events:none;z-index:20;transition:opacity 0.4s ease-out, transform 0.4s ease-out;transform:scale(0.2);opacity:1;`; gameArea.appendChild(f);
+            requestAnimationFrame(()=>requestAnimationFrame(()=>{f.style.transform='scale(1.5)';f.style.opacity='0';})); setTimeout(()=>f.remove(),400);
+
+            for (let i=0; i<80; i++) {
+                const sp=document.createElement('div'), sH=Math.floor(Math.random()*360), sL=50+Math.random()*30, sS=Math.random()*10+4, a=Math.random()*Math.PI*2, d=Math.pow(Math.random(),0.5)*300+50, dX=Math.cos(a)*d, dY=Math.sin(a)*d, dur=0.6+Math.random()*0.6;
+                sp.style.cssText=`position:absolute;border-radius:50%;pointer-events:none;z-index:15;background:hsl(${sH},100%,${sL}%);box-shadow:0 0 15px hsl(${sH},100%,50%);width:${sS}px;height:${sS}px;left:${cX-sS/2}px;top:${cY-sS/2}px;transition:transform ${dur}s cubic-bezier(0.1,0.8,0.3,1), opacity ${dur}s ease-in;transform:translate(0,0) scale(1);`; gameArea.appendChild(sp);
+                requestAnimationFrame(()=>requestAnimationFrame(()=>{sp.style.transform=`translate(${dX}px, ${dY+200}px) scale(0)`;sp.style.opacity='0';})); setTimeout(()=>sp.remove(),dur*1000);
+            }
+        } else {
+            const p=document.createElement('div'); p.classList.add('particle'); p.style.cssText=`background:hsla(${h},80%,70%,0.6);box-shadow:0 0 20px hsla(${h},80%,70%,0.8);width:${s}px;height:${s}px;left:${x}px;top:${y}px;`; gameArea.appendChild(p); setTimeout(()=>p.remove(),400);
+        }
+    }
+</script>
+</body>
+</html>
