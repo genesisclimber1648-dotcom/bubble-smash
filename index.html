@@ -5,9 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>爽快！バブルスマッシュ - 最終完全版</title>
 <style>
-    body {
+    /* iOSでの画面スクロールやバウンスバックを完全に防ぐ設定 */
+    html, body {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
         margin: 0;
+        padding: 0;
         overflow: hidden;
+        overscroll-behavior: none; /* スクロールチェーンを無効化 */
+    }
+    body {
         background-color: #1a1a2e;
         transition: background-color 0.3s ease;
         color: #fff;
@@ -110,6 +120,7 @@
         padding: 20px;
         box-sizing: border-box;
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
     h1 { 
         margin: 0 0 10px 0; 
@@ -194,6 +205,14 @@
 </div>
 
 <script>
+    // iOS Safariのスワイプによる画面スクロール・バウンスをJavaScriptからも強力に防ぐ
+    document.addEventListener('touchmove', function(e) {
+        // リザルト画面でスクロールが必要な場合は例外として許可
+        if (!e.target.closest('#overlay')) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+
     const gameArea = document.getElementById('gameArea');
     const scoreEl = document.getElementById('scoreDisplay');
     const timeEl = document.getElementById('timeDisplay');
